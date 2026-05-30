@@ -1,0 +1,1817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cold Mail Generator — KP</title>
+    <style>
+        :root {
+            --paper: #f5f2ec;
+            --paper-2: #ece7dc;
+            --panel: #fbf9f4;
+            --rule: #d9d2c0;
+            --ink: #1a1916;
+            --ink-2: #2f2d27;
+            --muted: #6b6557;
+            --muted-2: #8a8472;
+            --accent: #2f3d7a;
+            --accent-2: #4a5fa8;
+            --accent-soft: #e8eaf3;
+            --warm: #b35a2b;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            background: var(--paper);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--ink-2);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: var(--panel);
+            border-bottom: 1px solid var(--rule);
+            padding: 16px 28px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .monogram {
+            width: 36px; height: 36px;
+            background: var(--ink);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: Georgia, serif;
+            font-size: 13px; font-weight: 700;
+            color: var(--panel);
+            letter-spacing: 0.04em;
+            flex-shrink: 0;
+        }
+
+        .header-title { font-family: Georgia, serif; font-size: 17px; color: var(--ink); letter-spacing: -0.01em; }
+        .header-sub { font-size: 10.5px; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; margin-top: 2px; }
+
+        /* ── Layout ── */
+        .main {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            height: calc(100vh - 69px);
+        }
+
+        /* ── Left panel ── */
+        .input-panel {
+            background: var(--panel);
+            border-right: 1px solid var(--rule);
+            padding: 24px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        .section-label {
+            font-size: 10px; font-weight: 700;
+            letter-spacing: 0.2em; text-transform: uppercase;
+            color: var(--muted);
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 8px;
+        }
+        .section-label::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
+
+        .field-label { font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 5px; display: block; }
+
+        input[type="password"], input[type="text"], textarea, select {
+            width: 100%;
+            border: 1px solid var(--rule);
+            border-radius: 8px;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: inherit;
+            font-size: 13.5px;
+            padding: 9px 11px;
+            outline: none;
+            transition: border-color 140ms, background 140ms;
+        }
+        input[type="password"] { font-family: ui-monospace, monospace; letter-spacing: 0.1em; }
+        input:focus, textarea:focus, select:focus { border-color: var(--accent); background: #fff; }
+
+        textarea.jd {
+            min-height: 200px; max-height: 300px;
+            line-height: 1.6; resize: vertical;
+        }
+
+        select { cursor: pointer; }
+
+        /* ── Model row ── */
+        .model-row { display: flex; gap: 6px; align-items: center; }
+        .model-row select { flex: 1; }
+
+        .refresh-btn {
+            width: 32px; height: 32px; flex-shrink: 0;
+            border: 1px solid var(--rule);
+            border-radius: 8px;
+            background: var(--paper);
+            color: var(--muted);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; line-height: 1;
+            transition: background 140ms, color 140ms, border-color 140ms;
+        }
+        .refresh-btn:hover:not(:disabled) { background: var(--panel); color: var(--accent); border-color: var(--accent); }
+        .refresh-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .refresh-btn.spinning { animation: spin 0.75s linear infinite; }
+
+        /* ── File drop ── */
+        .file-drop {
+            border: 1.5px dashed var(--rule);
+            border-radius: 10px;
+            padding: 18px 14px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 140ms, background 140ms;
+            background: var(--paper);
+            position: relative;
+        }
+        .file-drop:hover, .file-drop.drag-over { border-color: var(--accent); background: var(--accent-soft); }
+        .file-drop input[type="file"] {
+            position: absolute; inset: 0;
+            opacity: 0; cursor: pointer;
+            width: 100%; height: 100%;
+        }
+        .file-drop-icon { font-size: 22px; margin-bottom: 6px; }
+        .file-drop-text { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+        .file-drop-text strong { color: var(--accent); }
+
+        .file-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+        .file-chip {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--panel); border: 1px solid var(--rule);
+            border-radius: 7px; padding: 6px 10px;
+            font-size: 12px; color: var(--ink-2);
+        }
+        .file-chip-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-chip-remove {
+            color: var(--muted); cursor: pointer;
+            border: none; background: none; font-size: 13px; line-height: 1;
+            border-radius: 4px; padding: 2px 4px;
+            transition: color 140ms, background 140ms;
+        }
+        .file-chip-remove:hover { color: var(--warm); background: #f5e8e0; }
+
+        /* ── Generate button ── */
+        .generate-btn {
+            width: 100%; padding: 13px 20px;
+            background: var(--accent); color: #fff;
+            border: none; border-radius: 10px;
+            font-family: inherit; font-size: 14.5px; font-weight: 600;
+            letter-spacing: 0.01em; cursor: pointer;
+            transition: background 140ms, transform 120ms;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .generate-btn:hover:not(:disabled) { background: var(--accent-2); transform: translateY(-1px); }
+        .generate-btn:active:not(:disabled) { transform: none; }
+        .generate-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .spinner {
+            width: 15px; height: 15px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.65s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .alert {
+            padding: 10px 13px; border-radius: 8px;
+            font-size: 12.5px; line-height: 1.5;
+        }
+        .alert-error { background: #fdf0eb; border: 1px solid #e8c4ae; color: #7a3010; }
+
+        /* ── Right panel ── */
+        .output-panel { display: flex; flex-direction: column; background: var(--paper-2); }
+
+        .output-toolbar {
+            background: var(--panel); border-bottom: 1px solid var(--rule);
+            padding: 10px 18px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .output-toolbar-title { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); flex: 1; }
+
+        .toolbar-btn {
+            padding: 6px 13px; border-radius: 7px;
+            border: 1px solid var(--rule); background: var(--panel);
+            color: var(--ink); font-family: inherit; font-size: 12.5px; font-weight: 600;
+            cursor: pointer; transition: background 140ms, border-color 140ms, color 140ms;
+            white-space: nowrap;
+        }
+        .toolbar-btn:hover:not(:disabled) { background: var(--paper); border-color: var(--accent); color: var(--accent); }
+        .toolbar-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .toolbar-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .toolbar-btn.primary:hover:not(:disabled) { background: var(--accent-2); border-color: var(--accent-2); color: #fff; }
+
+        .output-tabs {
+            display: flex; background: var(--panel);
+            border-bottom: 1px solid var(--rule); padding: 0 18px;
+        }
+        .tab {
+            padding: 9px 15px; font-size: 11.5px; font-weight: 600;
+            letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+            cursor: pointer; border-bottom: 2px solid transparent;
+            transition: color 140ms, border-color 140ms; user-select: none;
+        }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab:hover:not(.active) { color: var(--ink-2); }
+
+        .output-content { flex: 1; overflow: auto; padding: 28px; }
+
+        .preview-wrap {
+            background: #fff; border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05);
+            overflow: hidden; max-width: 800px; margin: 0 auto;
+        }
+        iframe.preview { width: 100%; border: none; display: block; min-height: 300px; }
+
+        pre.code-view {
+            background: #1a1916; color: #f5f2ec;
+            border-radius: 12px; padding: 22px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 11.5px; line-height: 1.7;
+            overflow: auto; max-width: 900px; margin: 0 auto;
+            white-space: pre-wrap; word-break: break-word;
+        }
+
+        .empty-state {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; min-height: 400px;
+            color: var(--muted); text-align: center; gap: 12px;
+        }
+        .empty-icon { font-size: 44px; opacity: 0.35; }
+        .empty-title { font-family: Georgia, serif; font-size: 17px; color: var(--muted-2); }
+        .empty-sub { font-size: 13px; color: var(--muted-2); max-width: 280px; line-height: 1.6; }
+
+        /* ── Left panel scrollable now that links section is added ── */
+        .input-panel { overflow-y: auto !important; }
+
+        /* ── Profile links ── */
+        .link-row {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 7px;
+        }
+        .link-platform {
+            width: 82px; flex-shrink: 0;
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 0.06em; text-transform: uppercase;
+            color: var(--muted);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .link-platform-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--rule); flex-shrink: 0;
+        }
+        .link-row input[type="url"], .link-row input[type="text"] {
+            flex: 1; font-size: 12.5px; padding: 7px 10px;
+        }
+
+        /* ── Recent button in header ── */
+        .recent-header-btn {
+            margin-left: auto;
+            padding: 7px 14px; border-radius: 8px;
+            border: 1px solid var(--rule); background: var(--panel);
+            color: var(--ink); font-family: inherit; font-size: 12.5px; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            transition: background 140ms, border-color 140ms, color 140ms;
+        }
+        .recent-header-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+        .recent-header-btn .badge {
+            background: var(--warm); color: #fff;
+            font-size: 10px; font-weight: 700; line-height: 1;
+            padding: 2px 5px; border-radius: 20px; letter-spacing: 0;
+        }
+
+        /* ── Recent overlay ── */
+        .recent-overlay {
+            position: fixed; inset: 0;
+            background: rgba(26,25,22,0.35);
+            z-index: 40;
+            opacity: 0; pointer-events: none;
+            transition: opacity 220ms;
+        }
+        .recent-overlay.open { opacity: 1; pointer-events: all; }
+
+        /* ── Recent drawer ── */
+        .recent-drawer {
+            position: fixed; top: 0; right: 0; bottom: 0;
+            width: 360px;
+            background: var(--panel);
+            border-left: 1px solid var(--rule);
+            z-index: 50;
+            display: flex; flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 240ms cubic-bezier(0.16,1,0.3,1);
+            box-shadow: -8px 0 32px rgba(26,25,22,0.08);
+        }
+        .recent-drawer.open { transform: translateX(0); }
+
+        .drawer-head {
+            padding: 18px 20px 16px;
+            border-bottom: 1px solid var(--rule);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .drawer-head-title {
+            font-family: Georgia, serif; font-size: 16px;
+            color: var(--ink); letter-spacing: -0.01em; flex: 1;
+        }
+        .drawer-close {
+            width: 30px; height: 30px; border-radius: 7px;
+            border: 1px solid var(--rule); background: none;
+            color: var(--muted); cursor: pointer; font-size: 15px;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 140ms, color 140ms;
+        }
+        .drawer-close:hover { background: var(--paper-2); color: var(--ink); }
+
+        .drawer-list { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+        .history-card {
+            background: var(--paper); border: 1px solid var(--rule);
+            border-radius: 10px; padding: 13px 14px;
+            cursor: pointer;
+            transition: border-color 140ms, box-shadow 140ms;
+        }
+        .history-card:hover { border-color: var(--accent); box-shadow: 0 2px 10px rgba(47,61,122,0.08); }
+
+        .hc-title {
+            font-size: 13px; font-weight: 650; color: var(--ink);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .hc-preheader {
+            font-size: 11.5px; color: var(--muted); line-height: 1.45;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+            overflow: hidden; margin-bottom: 10px;
+        }
+        .hc-footer {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .hc-date {
+            font-family: ui-monospace, monospace;
+            font-size: 10.5px; color: var(--muted-2); letter-spacing: 0.04em;
+        }
+        .hc-actions { display: flex; gap: 6px; }
+        .hc-btn {
+            padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
+            cursor: pointer; border: 1px solid var(--rule); background: var(--panel);
+            color: var(--ink); transition: background 140ms, color 140ms, border-color 140ms;
+            font-family: inherit;
+        }
+        .hc-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .hc-btn.del:hover { border-color: var(--warm); color: var(--warm); background: #fdf0eb; }
+
+        .drawer-empty {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; flex: 1;
+            color: var(--muted-2); text-align: center; gap: 10px; padding: 40px 20px;
+        }
+        .drawer-empty-icon { font-size: 36px; opacity: 0.3; }
+        .drawer-empty-text { font-size: 13px; line-height: 1.5; }
+
+        /* ── Redesign FAB ── */
+        .output-panel { position: relative; }
+
+        .redesign-wrap {
+            position: absolute;
+            bottom: 22px; right: 22px;
+            z-index: 6;
+            display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+        }
+
+        .redesign-box {
+            width: 340px;
+            background: var(--panel);
+            border: 1px solid var(--rule);
+            border-radius: 14px;
+            padding: 16px 16px 14px;
+            box-shadow: 0 8px 40px rgba(26,25,22,0.13), 0 2px 8px rgba(26,25,22,0.06);
+            display: none;
+        }
+        .redesign-box.open {
+            display: block;
+            animation: rdSlideUp 200ms cubic-bezier(0.16,1,0.3,1);
+        }
+        @keyframes rdSlideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .rdbox-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .rdbox-title {
+            font-family: Georgia, serif; font-size: 14px;
+            color: var(--ink); letter-spacing: -0.01em;
+        }
+        .rdbox-close {
+            color: var(--muted); background: none; border: none;
+            cursor: pointer; font-size: 14px; padding: 2px 5px; border-radius: 5px;
+            transition: color 140ms, background 140ms; line-height: 1;
+        }
+        .rdbox-close:hover { color: var(--ink); background: var(--paper-2); }
+
+        .rdbox-hint {
+            font-size: 11.5px; color: var(--muted); line-height: 1.5; margin-bottom: 10px;
+        }
+
+        .redesign-textarea {
+            width: 100%; border: 1px solid var(--rule);
+            border-radius: 8px; background: var(--paper);
+            color: var(--ink); font-family: inherit; font-size: 13px;
+            padding: 9px 11px; outline: none; resize: vertical;
+            min-height: 70px; max-height: 180px; line-height: 1.55;
+            transition: border-color 140ms, background 140ms;
+        }
+        .redesign-textarea:focus { border-color: var(--accent); background: #fff; }
+
+        .rdbox-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: 10px; gap: 8px;
+        }
+        .rdbox-char {
+            font-family: ui-monospace, monospace;
+            font-size: 10px; color: var(--muted-2); letter-spacing: 0.04em;
+        }
+        .redesign-send-btn {
+            padding: 8px 16px;
+            background: var(--accent); color: #fff;
+            border: none; border-radius: 8px;
+            font-family: inherit; font-size: 13px; font-weight: 600;
+            cursor: pointer; white-space: nowrap;
+            display: flex; align-items: center; gap: 6px;
+            transition: background 140ms, transform 100ms;
+        }
+        .redesign-send-btn:hover:not(:disabled) { background: var(--accent-2); transform: translateY(-1px); }
+        .redesign-send-btn:active:not(:disabled) { transform: none; }
+        .redesign-send-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .redesign-fab {
+            padding: 10px 20px;
+            background: var(--ink); color: var(--paper);
+            border: none; border-radius: 999px;
+            font-family: inherit; font-size: 13px; font-weight: 600;
+            letter-spacing: 0.01em; cursor: pointer;
+            box-shadow: 0 4px 18px rgba(26,25,22,0.22);
+            display: flex; align-items: center; gap: 7px;
+            transition: background 140ms, transform 120ms, box-shadow 140ms, opacity 200ms;
+        }
+        .redesign-fab:hover:not(:disabled) {
+            background: var(--ink-2);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 26px rgba(26,25,22,0.28);
+        }
+        .redesign-fab:active:not(:disabled) { transform: none; }
+        .redesign-fab:disabled { opacity: 0; pointer-events: none; }
+
+        /* ── Generation loading animation ── */
+        .ga-wrap {
+            position: relative;
+            min-height: 100%;
+            padding: 28px 28px 68px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #ga-canvas {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .ga-skel {
+            width: 100%;
+            max-width: 560px;
+            z-index: 1;
+            animation: gaFadeUp 480ms cubic-bezier(0.16,1,0.3,1) both;
+        }
+
+        @keyframes gaFadeUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* shimmer keyframe */
+        @keyframes gaShim {
+            0%   { background-position: -500px 0; }
+            100% { background-position: 500px 0; }
+        }
+        .gash {
+            background: linear-gradient(90deg,
+                #d9d2c0 0%, #ece8de 38%, #e0d9cc 55%, #d9d2c0 100%);
+            background-size: 500px 100%;
+            animation: gaShim 2.1s infinite linear;
+            border-radius: 5px;
+        }
+
+        /* skeleton pieces */
+        .ga-metarow {
+            display: flex; justify-content: space-between;
+            padding: 0 2px 14px;
+            opacity: 0.55;
+        }
+        .ga-bar { display: flex; height: 4px; border-radius: 4px 4px 0 0; overflow: hidden; }
+        .ga-bar-w { width: 20%; background: rgba(179,90,43,0.4); }
+        .ga-bar-c { flex: 1;  background: rgba(47,61,122,0.3); }
+
+        .ga-panel {
+            background: rgba(251,249,244,0.72);
+            border: 1px solid rgba(217,210,192,0.9);
+            border-top: none;
+            border-radius: 0 0 10px 10px;
+            padding: 30px 36px 28px;
+        }
+
+        .ga-identity { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+        .ga-circle   { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; }
+        .ga-id-l     { flex: 1; }
+
+        .ga-hl       { margin-bottom: 22px; }
+
+        .ga-body     { margin-bottom: 20px; }
+        .ga-bl       { height: 11px; margin-bottom: 7px; }
+
+        .ga-seclabel { display: flex; align-items: center; gap: 10px; margin: 18px 0 14px; }
+        .ga-seclabel-t { height: 8px; width: 158px; flex-shrink: 0; }
+        .ga-seclabel-r { flex: 1; height: 1px; background: rgba(217,210,192,0.9); }
+
+        .ga-proj     { display: flex; gap: 12px; margin-bottom: 12px; }
+        .ga-proj-n   { height: 10px; width: 18px; flex-shrink: 0; margin-top: 2px; }
+        .ga-proj-ll  { flex: 1; }
+        .ga-proj-l   { height: 10px; margin-bottom: 5px; }
+
+        .ga-quote    { display: flex; gap: 14px; margin: 20px 0 18px; }
+        .ga-quote-b  { width: 3px; border-radius: 3px; background: rgba(47,61,122,0.28); }
+        .ga-quote-ll { flex: 1; }
+        .ga-quote-l  { height: 11px; margin-bottom: 6px; }
+
+        .ga-ctas     { display: flex; gap: 8px; margin-bottom: 22px; }
+        .ga-cta      { height: 36px; width: 88px; border-radius: 8px;
+                       border: 1px solid rgba(217,210,192,0.8);
+                       background: rgba(217,210,192,0.35); }
+
+        .ga-signoff  { border-top: 1px solid rgba(217,210,192,0.9); padding-top: 20px; }
+
+        /* status bar */
+        .ga-status {
+            margin-top: 22px;
+            display: flex; align-items: center; gap: 9px;
+            z-index: 1;
+            animation: gaFadeUp 600ms 200ms both;
+        }
+        .ga-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+            animation: gaPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes gaPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.3; transform: scale(0.65); }
+        }
+        .ga-status-text {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 11px; letter-spacing: 0.07em;
+            color: var(--muted);
+            transition: opacity 250ms ease;
+        }
+
+        @media (max-width: 860px) {
+            .main { grid-template-columns: 1fr; height: auto; }
+            .input-panel { border-right: none; border-bottom: 1px solid var(--rule); }
+            .output-panel { min-height: 60vh; }
+            .recent-drawer { width: 100%; }
+            .redesign-wrap { bottom: 14px; right: 14px; }
+            .redesign-box { width: calc(100vw - 28px); }
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="monogram">KP</div>
+    <div>
+        <div class="header-title">Cold Mail Generator</div>
+        <div class="header-sub">Paste JD · Upload context · Generate</div>
+    </div>
+    <button class="recent-header-btn" id="recent-header-btn" onclick="openRecent()">
+        <span>Recent</span>
+        <span class="badge" id="history-badge" style="display:none">0</span>
+    </button>
+</header>
+
+<div class="main">
+    <!-- ── Left: Inputs ── -->
+    <div class="input-panel">
+
+        <div>
+            <div class="section-label">Configuration</div>
+            <label class="field-label" for="api-key">Gemini API Key</label>
+            <input type="password" id="api-key" placeholder="AIza…" autocomplete="off" />
+            <div style="height:10px"></div>
+            <label class="field-label" for="model">Model</label>
+            <div class="model-row">
+                <select id="model">
+                    <option value="gemini-2.5-flash-preview-05-20">gemini-2.5-flash-preview</option>
+                    <option value="gemini-2.5-pro-preview-06-05">gemini-2.5-pro-preview</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                    <option value="gemini-2.5-flash-preview-05-20">gemini-2.5-flash-preview-05-20</option>
+                    <option value="gemini-3-flash-preview" selected>gemini-3-flash-preview (default)</option>
+                </select>
+                <button class="refresh-btn" id="refresh-btn" onclick="refreshModels()" title="Fetch available models from API">↻</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-label">Job Description</div>
+            <textarea class="jd" id="jd" placeholder="Paste the full job description here…"></textarea>
+        </div>
+
+        <div>
+            <div class="section-label">Context Files <span style="font-size:9px;letter-spacing:0;font-weight:400;text-transform:none;color:var(--muted-2)">(optional)</span></div>
+            <div class="file-drop" id="file-drop">
+                <input type="file" id="file-input" multiple accept=".md,.txt" />
+                <div class="file-drop-icon">📄</div>
+                <div class="file-drop-text">
+                    <strong>Click to upload</strong> or drag &amp; drop<br/>
+                    Projects.md, Experience.md, etc.
+                </div>
+            </div>
+            <div class="file-list" id="file-list"></div>
+        </div>
+
+        <div>
+            <div class="section-label">Profile Links <span style="font-size:9px;letter-spacing:0;font-weight:400;text-transform:none;color:var(--muted-2)">(used in CTAs)</span></div>
+
+            <div class="link-row">
+                <div class="link-platform"><div class="link-platform-dot" style="background:#1a1916"></div>GitHub</div>
+                <input type="url" id="link-github" placeholder="https://github.com/…" />
+            </div>
+            <div class="link-row">
+                <div class="link-platform"><div class="link-platform-dot" style="background:#0077b5"></div>LinkedIn</div>
+                <input type="url" id="link-linkedin" placeholder="https://linkedin.com/in/…" />
+            </div>
+            <div class="link-row">
+                <div class="link-platform"><div class="link-platform-dot" style="background:#1a73e8"></div>Codeforces</div>
+                <input type="url" id="link-cf" placeholder="https://codeforces.com/profile/…" />
+            </div>
+            <div class="link-row">
+                <div class="link-platform"><div class="link-platform-dot" style="background:#f89f1b"></div>LeetCode</div>
+                <input type="url" id="link-lc" placeholder="https://leetcode.com/u/…" />
+            </div>
+            <div class="link-row">
+                <div class="link-platform"><div class="link-platform-dot" style="background:#b35a2b"></div>Portfolio</div>
+                <input type="url" id="link-portfolio" placeholder="https://…" />
+            </div>
+            <div class="link-row">
+                <div class="link-platform"><div class="link-platform-dot" style="background:#000"></div>X / Twitter</div>
+                <input type="url" id="link-twitter" placeholder="https://x.com/…" />
+            </div>
+        </div>
+
+        <button class="generate-btn" id="generate-btn" onclick="generate()">
+            Generate Cold Mail
+        </button>
+
+        <div id="error-area"></div>
+    </div>
+
+    <!-- ── Right: Output ── -->
+    <div class="output-panel">
+        <div class="output-toolbar">
+            <div class="output-toolbar-title">Output</div>
+            <button class="toolbar-btn" id="copy-btn" disabled onclick="copyHTML()">Copy HTML</button>
+            <button class="toolbar-btn primary" id="download-btn" disabled onclick="downloadHTML()">Download</button>
+        </div>
+        <div class="output-tabs">
+            <div class="tab active" data-tab="preview" onclick="switchTab(this)">Preview</div>
+            <div class="tab" data-tab="code" onclick="switchTab(this)">HTML</div>
+        </div>
+        <div class="output-content" id="output-content">
+            <div class="empty-state">
+                <div class="empty-icon">✉️</div>
+                <div class="empty-title">Ready to generate</div>
+                <div class="empty-sub">Paste a job description, optionally upload context files, then hit Generate.</div>
+            </div>
+        </div>
+
+        <!-- ── Redesign FAB ── -->
+        <div class="redesign-wrap" id="redesign-wrap">
+            <div class="redesign-box" id="redesign-box">
+                <div class="rdbox-head">
+                    <span class="rdbox-title">Redesign</span>
+                    <button class="rdbox-close" onclick="closeRedesign()" title="Close">✕</button>
+                </div>
+                <div class="rdbox-hint">Describe what to change — your input is the top priority.</div>
+                <textarea class="redesign-textarea" id="redesign-prompt"
+                    placeholder="e.g. Make the headline more aggressive · switch to a darker tone · reorder projects to lead with PaperKnife · tighten the body to 2 sentences…"
+                    oninput="updateRdChar(this)"></textarea>
+                <div class="rdbox-footer">
+                    <span class="rdbox-char" id="rd-char">0</span>
+                    <button class="redesign-send-btn" id="redesign-send-btn" onclick="sendRedesign()">
+                        Send
+                    </button>
+                </div>
+                <div id="rd-error" style="margin-top:8px;"></div>
+            </div>
+            <button class="redesign-fab" id="redesign-fab" disabled onclick="toggleRedesign()">
+                ✦&nbsp;Redesign
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Recent mails drawer ── -->
+<div class="recent-overlay" id="recent-overlay" onclick="closeRecent()"></div>
+<aside class="recent-drawer" id="recent-drawer">
+    <div class="drawer-head">
+        <div class="drawer-head-title">Recent Mails</div>
+        <button class="drawer-close" onclick="closeRecent()" title="Close">✕</button>
+    </div>
+    <div class="drawer-list" id="drawer-list"></div>
+</aside>
+
+<script>
+// ── Hallmark design discipline (condensed for email HTML context) ──
+const HALLMARK_DISCIPLINE = `
+HALLMARK DESIGN DISCIPLINE — apply these rules strictly when generating the HTML:
+
+PRE-EMIT SELF-CRITIQUE: Before finalising, score the output 1–5 on six axes —
+  P (Philosophy: intentionality, does every choice serve a purpose?)
+  H (Hierarchy: visual order, can the reader scan in 3 seconds?)
+  E (Execution: craft, clean HTML/CSS, consistent spacing, no accidental quirks?)
+  S (Specificity: tailored to THIS exact role and company, not recyclable copy?)
+  R (Restraint: nothing decorative that doesn't earn its presence)
+  V (Variety: feels handwritten for this brief, not a template swap)
+Anything < 3 on any axis → revise that axis before emitting.
+Stamp the six scores in an HTML comment immediately after <!DOCTYPE html>:
+<!-- Hallmark · pre-emit critique: P? H? E? S? R? V? -->
+
+LOCKED TOKENS — NO MID-RENDER IMPROVISATION:
+Every colour must reference a named CSS custom property from the :root block (var(--accent), var(--paper), var(--warm), etc.). No inline hex, rgb(), or oklch() values that bypass the token system. The reference template's :root token block is the system — extend it if needed, but never skip it.
+
+HONEST COPY — NO FABRICATED METRICS:
+Do not invent statistics, user counts, percentage claims, or testimonials. Only include numbers and claims that appear in the JD or the uploaded context files. If a specific metric wasn't provided, describe the work qualitatively.
+
+TYPOGRAPHY DISCIPLINE:
+- Hero headline: ≤ 7 words per line, ≤ 50 chars total. Two-line serif format: plain declarative statement on line 1, accented italic response on line 2 (matching the reference template's pattern exactly). Font-size 30–34px.
+- Body: 15–16px, line-height 1.65–1.7, --ink-2 colour.
+- No orphaned single words at end of paragraphs (reword to fill).
+- No ALL-CAPS body text. Section labels only.
+
+COPY VOICE — EDITORIAL, NOT BOILERPLATE:
+Never use: "I am writing to express my interest", "I would be a great fit", "passionate about", "hard-working", "team player", "detail-oriented". The voice is confident, direct, and specific — like a founder letter. The headline and opening paragraph must reference the specific company or role by name. The pull quote must feel crafted for this role, not recycled.
+
+STRUCTURAL INTEGRITY — ALL SIX SECTIONS REQUIRED:
+(1) preheader hidden text + meta top row (role label left, No. 001/KP right) + two-tone accent bar
+(2) identity strip (KP monogram circle + full name + IIT Kharagpur line)
+(3) serif headline (two-line, second line italic + accent colour)
+(4) body paragraphs + "Experience & selected work" section label with rule + numbered project list (01–N)
+(5) indigo left-border pull quote + closing line + CTA buttons (GitHub + LinkedIn)
+(6) sign-off (Warmly / full name / IIT line) + footer subject line row
+
+RESTRAINT — WHAT NOT TO ADD:
+No emoji in the email body. No gradients. No box-shadows on the main panel (flat 1px border only, matching reference). No additional section labels beyond "Experience & selected work". No decorative elements beyond the two-tone accent bar and the left-border pull quote. No invented social proof.
+
+SUBJECT LINE: The footer subject line must be specific: "Application for <Role Name> — Krishna Paikine". Not generic.
+
+PREHEADER: The hidden preheader div must be a compelling one-liner about Krishna relevant to this specific role — not the same as the reference template.
+`;
+
+// ── Reference template (embedded for Gemini prompt) ──
+const REFERENCE_TEMPLATE = `<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta http-equiv="x-ua-compatible" content="ie=edge" />
+        <title>Junior AI Engineer Intern — Application</title>
+        <style>
+            :root {
+                --paper: #f5f2ec;
+                --paper-2: #ece7dc;
+                --panel: #fbf9f4;
+                --panel-2: #f0ecde;
+                --rule: #d9d2c0;
+                --rule-soft: #e6e0d0;
+                --ink: #1a1916;
+                --ink-2: #2f2d27;
+                --muted: #6b6557;
+                --muted-2: #8a8472;
+                --accent: #2f3d7a;
+                --accent-2: #4a5fa8;
+                --accent-soft: #e8eaf3;
+                --warm: #b35a2b;
+            }
+            html, body { margin: 0 !important; padding: 0 !important; min-width: 100% !important; background: #f5f2ec; overflow-x: clip; }
+            body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+            table, td { border-collapse: collapse !important; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+            img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+            a { color: inherit; text-decoration: none; }
+            .email-shell { width: 100%; background: #f5f2ec; }
+            .container { width: 640px; max-width: 640px; }
+            .button:hover, .button:focus-visible { transform: translateY(-1px); }
+            .button:focus-visible { outline: 2px solid #2f3d7a; outline-offset: 2px; }
+            .button:active { transform: translateY(0); }
+            .link-underline:hover { color: #2f3d7a !important; }
+            @media screen and (max-width: 680px) {
+                .container { width: 100% !important; max-width: 100% !important; }
+                .outer-pad { padding: 22px 16px !important; }
+                .panel-pad { padding: 32px 22px !important; }
+                .headline { font-size: 26px !important; line-height: 1.15 !important; }
+                .stack { display: block !important; width: 100% !important; }
+                .stack-pad { padding-right: 0 !important; padding-bottom: 18px !important; border-right: 0 !important; }
+                .stack-reset { padding-left: 0 !important; }
+                .cta-cell { display: block !important; width: 100% !important; padding: 0 0 10px 0 !important; }
+            }
+        </style>
+    </head>
+    <body style="margin: 0; padding: 0; background: #f5f2ec">
+        <div style="display: none; overflow: hidden; line-height: 1px; opacity: 0; max-height: 0; max-width: 0;">
+            Builders over buzzwords  Krishna Kamalakar Paikine (IIT Kharagpur EE). PaperKnife shipped to 7.6k users · LangGraph agents · RAG · WhatsApp Agent CLI.
+        </div>
+        <table role="presentation" class="email-shell" width="100%" cellpadding="0" cellspacing="0" style="width: 100%; background: #f5f2ec">
+            <tr>
+                <td align="center" class="outer-pad" style="padding: 40px 20px 56px 20px">
+                    <table role="presentation" class="container" width="640" cellpadding="0" cellspacing="0" style="width: 640px; max-width: 640px">
+                        <!-- Top meta row -->
+                        <tr>
+                            <td style="padding: 0 4px 18px 4px">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td align="left" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; line-height: 16px; color: #6b6557; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600;">
+                                            <span style="color: #b35a2b">&#x25cf;</span>&nbsp;&nbsp;Application&nbsp;&nbsp;·&nbsp;&nbsp;Junior AI Engineer Intern
+                                        </td>
+                                        <td align="right" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 16px; color: #6b6557; letter-spacing: 0.04em;">
+                                            No. 001 / KP
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <!-- Accent bar -->
+                        <tr>
+                            <td style="height: 4px; line-height: 4px; font-size: 0; background: #2f3d7a; border-radius: 4px 4px 0 0;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td width="20%" style="height: 4px; line-height: 4px; font-size: 0; background: #b35a2b; border-radius: 4px 0 0 0;">&nbsp;</td>
+                                        <td width="80%" style="height: 4px; line-height: 4px; font-size: 0; background: #2f3d7a; border-radius: 0 4px 0 0;">&nbsp;</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <!-- Main letter panel -->
+                        <tr>
+                            <td class="panel panel-pad" style="background: #fbf9f4; border: 1px solid #d9d2c0; border-top: 0; border-radius: 0 0 10px 10px; padding: 44px 48px;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                    <!-- Identity strip -->
+                                    <tr>
+                                        <td style="padding: 0 0 28px 0">
+                                            <table role="presentation" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td valign="middle" style="padding-right: 14px">
+                                                        <table role="presentation" cellpadding="0" cellspacing="0" style="width: 44px; height: 44px; background: #1a1916; border-radius: 999px;">
+                                                            <tr>
+                                                                <td align="center" valign="middle" style="width: 44px; height: 44px; font-family: Georgia, 'Times New Roman', serif; font-size: 15px; font-weight: 700; color: #fbf9f4; letter-spacing: 0.04em;">KP</td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                    <td valign="middle">
+                                                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.25; color: #1a1916; font-weight: 650; letter-spacing: -0.005em;">Krishna Kamalakar Paikine</div>
+                                                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 12px; line-height: 1.4; color: #6b6557; margin-top: 2px;">IIT Kharagpur&nbsp;·&nbsp;Electrical Engineering</div>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <!-- Headline -->
+                                    <tr>
+                                        <td style="padding: 0 0 26px 0">
+                                            <div class="headline" style="font-family: Georgia, 'Times New Roman', serif; font-size: 32px; line-height: 1.18; color: #1a1916; letter-spacing: -0.012em; font-weight: 400;">
+                                                Builders over buzzwords <br />
+                                                <span style="color: #2f3d7a; font-style: italic">that&rsquo;s exactly how I work.</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- Body -->
+                                    <tr>
+                                        <td style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.7; color: #2f2d27;">
+                                            <p style="margin: 0 0 18px 0">Hi Shinjan,</p>
+                                            <p style="margin: 0 0 18px 0">I came across your post for the Junior AI Engineer Intern role, and it lines up closely with the kind of work I&rsquo;ve been shipping.</p>
+                                            <p style="margin: 0 0 8px 0">I&rsquo;m an Electrical Engineering graduate from IIT Kharagpur. Recent focus: AI agents, RAG systems, LLM tooling, and product-focused automation.</p>
+                                        </td>
+                                    </tr>
+                                    <!-- Section label -->
+                                    <tr>
+                                        <td style="padding: 28px 0 14px 0">
+                                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td width="100" valign="middle" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 10px; line-height: 14px; color: #6b6557; letter-spacing: 0.22em; text-transform: uppercase; font-weight: 700; white-space: nowrap; padding-right: 14px;">Experience &amp; selected work</td>
+                                                    <td valign="middle" style="border-top: 1px solid #d9d2c0; height: 1px; line-height: 1px; font-size: 0;">&nbsp;</td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <!-- Project list -->
+                                    <tr>
+                                        <td style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15.5px; line-height: 1.65; color: #2f2d27;">
+                                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td valign="top" width="40" style="padding: 2px 0 14px 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #b35a2b; font-weight: 700; letter-spacing: 0.02em;">01</td>
+                                                    <td valign="top" style="padding: 0 0 14px 0;"><strong style="color: #1a1916; font-weight: 650">Founding Software Engineer, Neosophical Labs</strong> <span style="color: #6b6557;">(May&nbsp;&rsquo;25&nbsp;&ndash;&nbsp;Feb&nbsp;&rsquo;26)</span> &mdash; LangGraph/LiveKit wellness voice-and-chat backends (OMI), shared text&nbsp;+&nbsp;voice flows with PostgreSQL-checkpointed state, and an agentic HRMS pipeline for payroll document ingestion, schema mapping, and confidence-aware validation with human-review traceability.</td>
+                                                </tr>
+                                                <tr>
+                                                    <td valign="top" width="40" style="padding: 2px 0 14px 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #b35a2b; font-weight: 700; letter-spacing: 0.02em;">02</td>
+                                                    <td valign="top" style="padding: 0 0 14px 0;"><a class="link-underline" href="https://whatsapp-agent-docs.paperknife.app/" style="color: #1a1916; text-decoration: none; font-weight: 650; border-bottom: 1.5px solid #2f3d7a; padding-bottom: 1px;">WhatsApp Agent CLI</a> &mdash; agent interface with tool use, session handling, reliability work, and real-world messaging workflows.</td>
+                                                </tr>
+                                                <tr>
+                                                    <td valign="top" width="40" style="padding: 2px 0 14px 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #b35a2b; font-weight: 700; letter-spacing: 0.02em;">03</td>
+                                                    <td valign="top" style="padding: 0 0 14px 0;"><a class="link-underline" href="https://github.com/kalki-kgp/callmind" style="color: #1a1916; text-decoration: none; font-weight: 650; border-bottom: 1.5px solid #2f3d7a; padding-bottom: 1px;">CallMind</a> &mdash; Android AI assistant that turns call recordings into searchable conversation memory: transcription, LLM summaries, and semantic search with embeddings stored locally in Room.</td>
+                                                </tr>
+                                                <tr>
+                                                    <td valign="top" width="40" style="padding: 2px 0 14px 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #b35a2b; font-weight: 700; letter-spacing: 0.02em;">04</td>
+                                                    <td valign="top" style="padding: 0 0 14px 0;"><a class="link-underline" href="https://paperknife.app" style="color: #1a1916; text-decoration: none; font-weight: 650; border-bottom: 1.5px solid #2f3d7a; padding-bottom: 1px;">PaperKnife</a> &mdash; privacy-first, local-processing PDF toolkit (React, Vite, WebAssembly, Capacitor), shipped to web&nbsp;+&nbsp;mobile. Last 30 days: ~7.6k unique visitors, 625k+ requests, real users, not a portfolio demo.</td>
+                                                </tr>
+                                                <tr>
+                                                    <td valign="top" width="40" style="padding: 2px 0 0 0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #b35a2b; font-weight: 700; letter-spacing: 0.02em;">05</td>
+                                                    <td valign="top" style="padding: 0;"><a class="link-underline" href="https://github.com/kalki-kgp/whatsapp-mcp" style="color: #1a1916; text-decoration: none; font-weight: 650; border-bottom: 1.5px solid #2f3d7a; padding-bottom: 1px;">WhatsApp MCP</a> &mdash; MCP server for macOS: read messages from the local WhatsApp DB, search contacts/chats, and send replies via WhatsApp Web.</td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <!-- Pull quote -->
+                                    <tr>
+                                        <td style="padding: 30px 0 6px 0">
+                                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td width="4" valign="top" style="width: 3px; background: #2f3d7a; border-radius: 3px;">&nbsp;</td>
+                                                    <td style="padding: 2px 0 2px 18px; font-family: Georgia, 'Times New Roman', serif; font-size: 17px; line-height: 1.55; color: #1a1916; font-style: italic; letter-spacing: -0.005em;">I enjoy turning messy ideas into working products, debugging agent/tool-calling failures, and figuring things out independently.</td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <!-- Closing line -->
+                                    <tr>
+                                        <td style="padding: 24px 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 16px; line-height: 1.65; color: #2f2d27;">
+                                            I&rsquo;d love to be considered for the role. My resume is attached &mdash; happy to walk through any of the work below.
+                                        </td>
+                                    </tr>
+                                    <!-- CTAs -->
+                                    <tr>
+                                        <td style="padding: 0 0 32px 0">
+                                            <table role="presentation" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td class="cta-cell" style="padding: 0 8px 8px 0">
+                                                        <a class="button" href="https://github.com/kalki-kgp" target="_blank" style="display: inline-block; background: #fbf9f4; color: #1a1916; border: 1px solid #c9c0a8; border-radius: 8px; padding: 13px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 18px; font-weight: 600; letter-spacing: 0.005em; text-decoration: none; transition: transform 120ms cubic-bezier(0.16,1,0.3,1); white-space: nowrap;">GitHub</a>
+                                                    </td>
+                                                    <td class="cta-cell" style="padding: 0 0 8px 0">
+                                                        <a class="button" href="https://www.linkedin.com/in/krishnapaikine" target="_blank" style="display: inline-block; background: #fbf9f4; color: #1a1916; border: 1px solid #c9c0a8; border-radius: 8px; padding: 13px 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 18px; font-weight: 600; letter-spacing: 0.005em; text-decoration: none; transition: transform 120ms cubic-bezier(0.16,1,0.3,1); white-space: nowrap;">LinkedIn</a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <!-- Sign-off -->
+                                    <tr>
+                                        <td style="border-top: 1px solid #d9d2c0; padding-top: 26px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #2f2d27;">
+                                            <div style="font-family: Georgia, 'Times New Roman', serif; font-size: 15px; line-height: 1.5; color: #6b6557; font-style: italic; margin-bottom: 6px;">Warmly,</div>
+                                            <div style="font-family: Georgia, 'Times New Roman', serif; font-size: 22px; line-height: 1.2; color: #1a1916; letter-spacing: -0.01em; font-weight: 400;">Krishna Kamalakar Paikine</div>
+                                            <div style="margin-top: 8px; font-size: 12px; line-height: 1.5; color: #6b6557; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;">IIT Kharagpur&nbsp;·&nbsp;Electrical Engineering</div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                        <!-- Footer / subject -->
+                        <tr>
+                            <td style="padding: 22px 4px 0 4px;">
+                                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                    <tr>
+                                        <td align="left" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 18px; color: #8a8472; letter-spacing: 0.02em;">
+                                            <span style="color: #6b6557; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase">Subject&nbsp;&#x203a;&nbsp;</span>Application for Junior AI Engineer Intern — Krishna Paikine
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td align="left" style="padding-top: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; line-height: 16px; color: #8a8472; letter-spacing: 0.04em;">·&nbsp;&nbsp;·&nbsp;&nbsp;·</td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>`;
+
+// ── State ──
+let uploadedFiles = {};
+let generatedHTML = '';
+let currentTab = 'preview';
+
+// ── Context cache state ──
+let _geminiCache = { name: null, model: null, ts: 0 };
+const CACHE_TTL_MS = 55 * 60 * 1000; // 55 min — server TTL is 60 min
+
+// ── Persist API key + model ──
+const apiKeyEl = document.getElementById('api-key');
+const modelEl  = document.getElementById('model');
+apiKeyEl.value = localStorage.getItem('gemini_api_key') || '';
+modelEl.value  = localStorage.getItem('gemini_model') || 'gemini-3-flash-preview';
+apiKeyEl.addEventListener('input', () => localStorage.setItem('gemini_api_key', apiKeyEl.value));
+modelEl.addEventListener('change', () => {
+    localStorage.setItem('gemini_model', modelEl.value);
+    _geminiCache = { name: null, model: null, ts: 0 }; // cache is model-specific
+});
+
+// ── Profile links — persist ──
+const LINK_IDS = ['github','linkedin','cf','lc','portfolio','twitter'];
+const LINK_DEFAULTS = {
+    github:   'https://github.com/kalki-kgp',
+    linkedin: 'https://www.linkedin.com/in/krishnapaikine',
+    cf: '', lc: '', portfolio: '', twitter: ''
+};
+
+function loadLinks() {
+    const saved = JSON.parse(localStorage.getItem('profile_links') || '{}');
+    LINK_IDS.forEach(id => {
+        const el = document.getElementById('link-' + id);
+        if (el) el.value = saved[id] ?? LINK_DEFAULTS[id] ?? '';
+    });
+}
+
+function saveLinks() {
+    const obj = {};
+    LINK_IDS.forEach(id => { obj[id] = document.getElementById('link-' + id)?.value.trim() || ''; });
+    localStorage.setItem('profile_links', JSON.stringify(obj));
+}
+
+function getLinks() {
+    const obj = {};
+    LINK_IDS.forEach(id => { obj[id] = document.getElementById('link-' + id)?.value.trim() || ''; });
+    return obj;
+}
+
+LINK_IDS.forEach(id => {
+    document.getElementById('link-' + id)?.addEventListener('input', saveLinks);
+});
+
+loadLinks();
+
+// ── History ──
+const HISTORY_KEY = 'cold_mail_history';
+const HISTORY_MAX = 20;
+
+function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+    catch { return []; }
+}
+
+function saveToHistory(html) {
+    const title = (html.match(/<title[^>]*>([^<]+)<\/title>/i) || [])[1]?.trim() || 'Untitled';
+    const preheader = (() => {
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const el = doc.querySelector('div[style*="display: none"]');
+            return el ? el.textContent.trim() : '';
+        } catch { return ''; }
+    })();
+    const entry = {
+        id: Date.now().toString(),
+        title,
+        preheader,
+        date: new Date().toISOString(),
+        html
+    };
+    let history = loadHistory();
+    history.unshift(entry);
+    if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    updateHistoryBadge();
+}
+
+function deleteFromHistory(id) {
+    const history = loadHistory().filter(e => e.id !== id);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    renderDrawer();
+    updateHistoryBadge();
+}
+
+function updateHistoryBadge() {
+    const count = loadHistory().length;
+    const badge = document.getElementById('history-badge');
+    if (badge) {
+        badge.style.display = count > 0 ? '' : 'none';
+        badge.textContent = count;
+    }
+}
+
+function formatDate(iso) {
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000)   return 'just now';
+    if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+    return d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function renderDrawer() {
+    const list = document.getElementById('drawer-list');
+    const history = loadHistory();
+    if (!history.length) {
+        list.innerHTML = `<div class="drawer-empty">
+            <div class="drawer-empty-icon">✉</div>
+            <div class="drawer-empty-text">No mails generated yet.<br/>Your history will appear here.</div>
+        </div>`;
+        return;
+    }
+    list.innerHTML = history.map(e => `
+        <div class="history-card" onclick="loadFromHistory('${e.id}')">
+            <div class="hc-title">${escapeHTML(e.title)}</div>
+            ${e.preheader ? `<div class="hc-preheader">${escapeHTML(e.preheader)}</div>` : ''}
+            <div class="hc-footer">
+                <span class="hc-date">${formatDate(e.date)}</span>
+                <div class="hc-actions">
+                    <button class="hc-btn" onclick="event.stopPropagation();loadFromHistory('${e.id}')">Load</button>
+                    <button class="hc-btn del" onclick="event.stopPropagation();deleteFromHistory('${e.id}')">✕</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function loadFromHistory(id) {
+    const entry = loadHistory().find(e => e.id === id);
+    if (!entry) return;
+    generatedHTML = entry.html;
+    renderOutput();
+    document.getElementById('copy-btn').disabled = false;
+    document.getElementById('download-btn').disabled = false;
+    document.getElementById('redesign-fab').disabled = false;
+    closeRecent();
+}
+
+// ── Drawer open / close ──
+function openRecent() {
+    renderDrawer();
+    document.getElementById('recent-overlay').classList.add('open');
+    document.getElementById('recent-drawer').classList.add('open');
+}
+
+function closeRecent() {
+    document.getElementById('recent-overlay').classList.remove('open');
+    document.getElementById('recent-drawer').classList.remove('open');
+}
+
+// Init badge on load
+updateHistoryBadge();
+
+// ── Redesign FAB ──
+let redesignOpen = false;
+
+function toggleRedesign() {
+    redesignOpen ? closeRedesign() : openRedesign();
+}
+
+function openRedesign() {
+    redesignOpen = true;
+    document.getElementById('redesign-box').classList.add('open');
+    setTimeout(() => document.getElementById('redesign-prompt').focus(), 50);
+}
+
+function closeRedesign() {
+    redesignOpen = false;
+    document.getElementById('redesign-box').classList.remove('open');
+}
+
+function updateRdChar(el) {
+    document.getElementById('rd-char').textContent = el.value.length;
+}
+
+async function sendRedesign() {
+    const userPrompt = document.getElementById('redesign-prompt').value.trim();
+    if (!userPrompt) return;
+
+    const apiKey  = apiKeyEl.value.trim();
+    const model   = modelEl.value;
+    const rdError = document.getElementById('rd-error');
+    rdError.innerHTML = '';
+
+    if (!apiKey) { rdError.innerHTML = `<div class="alert alert-error">Enter your Gemini API key first.</div>`; return; }
+
+    const sendBtn = document.getElementById('redesign-send-btn');
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<div class="spinner" style="width:13px;height:13px;border-width:2px"></div>';
+
+    // Rebuild context so redesign has everything the original generation had
+    let rdContextBlock = '';
+    const rdFileNames = Object.keys(uploadedFiles);
+    if (rdFileNames.length) {
+        rdContextBlock = '\n\nMY BACKGROUND (context files — use these if the directive asks to change projects or experience):\n';
+        rdFileNames.forEach(name => { rdContextBlock += `\n--- ${name} ---\n${uploadedFiles[name]}\n`; });
+    }
+
+    const rdLinks = getLinks();
+    const rdLinkLabels = { github:'GitHub', linkedin:'LinkedIn', cf:'Codeforces', lc:'LeetCode', portfolio:'Portfolio', twitter:'X / Twitter' };
+    const rdActiveLinks = LINK_IDS.filter(id => rdLinks[id]).map(id => `${rdLinkLabels[id]}: ${rdLinks[id]}`);
+    const rdLinksBlock = rdActiveLinks.length
+        ? `\n\nMY PROFILE LINKS:\n${rdActiveLinks.join('\n')}`
+        : '';
+
+    const rdJD = document.getElementById('jd').value.trim();
+    const rdJDBlock = rdJD ? `\n\nORIGINAL JOB DESCRIPTION (for context):\n${rdJD}` : '';
+
+    const prompt = `REDESIGN DIRECTIVE (highest priority — follow this exactly):
+${userPrompt}
+
+Rules:
+- Apply the directive above fully and literally
+- Keep all identity info unchanged: name "Krishna Kamalakar Paikine", monogram "KP", "IIT Kharagpur · Electrical Engineering"
+- Keep the same table-based HTML structure and CSS :root token system
+- If the directive asks to change, add, or swap projects/experience, use the context files below
+- If the directive references a link or platform, use the profile links below
+- Output ONLY the complete HTML document starting with <!DOCTYPE html> — no markdown, no explanation
+${rdContextBlock}${rdLinksBlock}${rdJDBlock}
+
+CURRENT EMAIL (apply the directive to this):
+${generatedHTML}`;
+
+    try {
+        const resp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.9, maxOutputTokens: 8192 }
+                })
+            }
+        );
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error?.message || `API error ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        let html = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        html = html.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+        if (!html.toLowerCase().includes('<html')) throw new Error('Unexpected response — no HTML found.');
+
+        generatedHTML = html;
+        renderOutput();
+        saveToHistory(html);
+        updateHistoryBadge();
+        closeRedesign();
+        document.getElementById('redesign-prompt').value = '';
+        document.getElementById('rd-char').textContent = '0';
+
+    } catch (err) {
+        rdError.innerHTML = `<div class="alert alert-error">&#9888; ${escapeHTML(err.message)}</div>`;
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = 'Send';
+    }
+}
+
+// ── File handling ──
+const fileInput = document.getElementById('file-input');
+const fileDrop  = document.getElementById('file-drop');
+
+fileInput.addEventListener('change', e => { handleFileList(e.target.files); fileInput.value = ''; });
+
+fileDrop.addEventListener('dragover', e => { e.preventDefault(); fileDrop.classList.add('drag-over'); });
+fileDrop.addEventListener('dragleave', () => fileDrop.classList.remove('drag-over'));
+fileDrop.addEventListener('drop', e => { e.preventDefault(); fileDrop.classList.remove('drag-over'); handleFileList(e.dataTransfer.files); });
+
+function handleFileList(files) {
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => { uploadedFiles[file.name] = e.target.result; renderFileList(); };
+        reader.readAsText(file);
+    });
+}
+
+function renderFileList() {
+    const list = document.getElementById('file-list');
+    list.innerHTML = '';
+    Object.keys(uploadedFiles).forEach(name => {
+        const chip = document.createElement('div');
+        chip.className = 'file-chip';
+        chip.innerHTML = `<span>📝</span><span class="file-chip-name">${escapeHTML(name)}</span><button class="file-chip-remove" onclick="removeFile(${JSON.stringify(name)})">✕</button>`;
+        list.appendChild(chip);
+    });
+}
+
+function removeFile(name) { delete uploadedFiles[name]; renderFileList(); }
+
+// ── Tab switching ──
+function switchTab(el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    currentTab = el.dataset.tab;
+    if (generatedHTML) renderOutput();
+}
+
+// ── Context caching ──
+async function getOrCreateCache(apiKey, model) {
+    const now = Date.now();
+    if (_geminiCache.name && _geminiCache.model === model && (now - _geminiCache.ts) < CACHE_TTL_MS) {
+        return _geminiCache.name;
+    }
+
+    const systemText =
+        `You are an expert cold-email copywriter and HTML craftsman. Generate a beautifully crafted, editorial-style HTML cold email for a job application.\n\n` +
+        HALLMARK_DISCIPLINE +
+        `\n\nREFERENCE TEMPLATE — match its HTML structure and CSS design tokens EXACTLY (same CSS variables, same table-based layout, same sections):\n\`\`\`html\n` +
+        REFERENCE_TEMPLATE +
+        `\n\`\`\``;
+
+    try {
+        const resp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: `models/${model}`,
+                    systemInstruction: { parts: [{ text: systemText }] },
+                    ttl: '3600s'
+                })
+            }
+        );
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        _geminiCache = { name: data.name, model, ts: now };
+        return data.name;
+    } catch {
+        return null;
+    }
+}
+
+// ── Generate ──
+async function generate() {
+    const apiKey = apiKeyEl.value.trim();
+    const jd     = document.getElementById('jd').value.trim();
+    const model  = modelEl.value;
+    const errEl  = document.getElementById('error-area');
+    errEl.innerHTML = '';
+
+    if (!apiKey) return showError('Please enter your Gemini API key.');
+    if (!jd)     return showError('Please paste a job description.');
+
+    setLoading(true);
+
+    // Build context block from uploaded files
+    let contextBlock = '';
+    const fileNames = Object.keys(uploadedFiles);
+    if (fileNames.length) {
+        contextBlock = '\n\nMY BACKGROUND (uploaded context files):\n';
+        fileNames.forEach(name => { contextBlock += `\n--- ${name} ---\n${uploadedFiles[name]}\n`; });
+    }
+
+    // Build profile links block
+    const links = getLinks();
+    const activeLinkLabels = {
+        github: 'GitHub', linkedin: 'LinkedIn', cf: 'Codeforces',
+        lc: 'LeetCode', portfolio: 'Portfolio', twitter: 'X / Twitter'
+    };
+    const activeLinks = LINK_IDS.filter(id => links[id]).map(id => `${activeLinkLabels[id]}: ${links[id]}`);
+    const linksBlock = activeLinks.length
+        ? `\n\nMY PROFILE LINKS (use these for the CTA buttons — pick the 2 most relevant as the main CTAs, list others in the footer or omit):\n${activeLinks.join('\n')}`
+        : '';
+
+    const prompt = `You are an expert cold-email copywriter and HTML craftsman. Generate a beautifully crafted, editorial-style HTML cold email for a job application.
+
+${HALLMARK_DISCIPLINE}
+
+REFERENCE TEMPLATE — match its HTML structure and CSS design tokens EXACTLY (same CSS variables, same table-based layout, same sections):
+\`\`\`html
+${REFERENCE_TEMPLATE}
+\`\`\`
+
+JOB DESCRIPTION:
+${jd}
+${contextBlock}${linksBlock}
+
+OUTPUT RULES:
+1. Output ONLY the complete HTML document starting with <!DOCTYPE html> — no markdown fences, no explanation, nothing before or after the HTML
+2. The Hallmark pre-emit critique comment (<!-- Hallmark · pre-emit critique: P? H? E? S? R? V? -->) goes on the very first line after <!DOCTYPE html>
+3. Match the reference template structure exactly: preheader div, outer table shell, inner container, meta top row (role label + No. 001/KP), two-tone accent bar, main panel with identity strip (KP monogram + name), large serif headline, body paragraphs, "Experience & selected work" section label with rule, numbered project list, indigo left-border pull quote, closing line, GitHub + LinkedIn CTA buttons, sign-off section, footer subject line row
+4. Keep all identity info unchanged: "Krishna Kamalakar Paikine", monogram "KP", "IIT Kharagpur · Electrical Engineering", GitHub URL (https://github.com/kalki-kgp), LinkedIn URL (https://www.linkedin.com/in/krishnapaikine)
+5. Customise for this specific role: update the meta row role label, update the page <title>, write a new punchy 2-line serif headline relevant to this role, write opening body paragraphs that reference the company/team/role specifically (use company name clues from the JD), select the 4–6 most relevant projects/experiences from the context files (or keep the reference list if no context provided), write a new pull quote that fits this role, update the subject line in the footer
+6. Apply every Hallmark discipline rule above before finalising`;
+
+    try {
+        const cacheName = await getOrCreateCache(apiKey, model);
+
+        const dynamicPrompt = `JOB DESCRIPTION:\n${jd}${contextBlock}${linksBlock}\n\nOUTPUT RULES:\n1. Output ONLY the complete HTML document starting with <!DOCTYPE html> — no markdown fences, no explanation, nothing before or after the HTML\n2. The Hallmark pre-emit critique comment (<!-- Hallmark · pre-emit critique: P? H? E? S? R? V? -->) goes on the very first line after <!DOCTYPE html>\n3. Match the reference template structure exactly: preheader div, outer table shell, inner container, meta top row (role label + No. 001/KP), two-tone accent bar, main panel with identity strip (KP monogram + name), large serif headline, body paragraphs, "Experience & selected work" section label with rule, numbered project list, indigo left-border pull quote, closing line, GitHub + LinkedIn CTA buttons, sign-off section, footer subject line row\n4. Keep all identity info unchanged: "Krishna Kamalakar Paikine", monogram "KP", "IIT Kharagpur · Electrical Engineering", GitHub URL (https://github.com/kalki-kgp), LinkedIn URL (https://www.linkedin.com/in/krishnapaikine)\n5. Customise for this specific role: update the meta row role label, update the page <title>, write a new punchy 2-line serif headline relevant to this role, write opening body paragraphs that reference the company/team/role specifically (use company name clues from the JD), select the 4–6 most relevant projects/experiences from the context files (or keep the reference list if no context provided), write a new pull quote that fits this role, update the subject line in the footer\n6. Apply every Hallmark discipline rule above before finalising`;
+
+        const requestBody = cacheName
+            ? { cachedContent: cacheName, contents: [{ parts: [{ text: dynamicPrompt }] }], generationConfig: { temperature: 0.85, maxOutputTokens: 8192 } }
+            : { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.85, maxOutputTokens: 8192 } };
+
+        const resp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            }
+        );
+
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error?.message || `API error ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        let html = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+        // Strip any accidental markdown fences
+        html = html.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+        if (!html.toLowerCase().includes('<html')) {
+            throw new Error('Gemini returned unexpected output — no HTML document found. Try again or switch to a more capable model.');
+        }
+
+        generatedHTML = html;
+        renderOutput();
+        document.getElementById('copy-btn').disabled = false;
+        document.getElementById('download-btn').disabled = false;
+        document.getElementById('redesign-fab').disabled = false;
+        saveToHistory(html);
+        updateHistoryBadge();
+
+    } catch (err) {
+        showError(err.message);
+    } finally {
+        setLoading(false);
+    }
+}
+
+// ── Render output ──
+function renderOutput() {
+    const content = document.getElementById('output-content');
+    if (currentTab === 'preview') {
+        content.innerHTML = `<div class="preview-wrap"><iframe class="preview" id="pf" sandbox="allow-same-origin"></iframe></div>`;
+        const frame = document.getElementById('pf');
+        const doc = frame.contentDocument || frame.contentWindow.document;
+        doc.open(); doc.write(generatedHTML); doc.close();
+        // Auto-size after render
+        const resize = () => { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
+        setTimeout(resize, 150);
+        setTimeout(resize, 600); // second pass for slow-rendering fonts
+    } else {
+        content.innerHTML = `<pre class="code-view">${escapeHTML(generatedHTML)}</pre>`;
+    }
+}
+
+// ── Actions ──
+function copyHTML() {
+    navigator.clipboard.writeText(generatedHTML).then(() => {
+        const btn = document.getElementById('copy-btn');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 2000);
+    });
+}
+
+function downloadHTML() {
+    const blob = new Blob([generatedHTML], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = 'cold-mail.html'; a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ── Helpers ──
+// ── Loading animation ──
+let _animRAF = null;
+let _animStatus = null;
+
+function startLoadingAnim() {
+    const container = document.getElementById('output-content');
+
+    container.innerHTML = `
+<div class="ga-wrap" id="ga-wrap">
+  <canvas id="ga-canvas"></canvas>
+  <div class="ga-skel">
+    <!-- meta row -->
+    <div class="ga-metarow">
+      <div class="gash" style="height:10px;width:185px"></div>
+      <div class="gash" style="height:10px;width:58px"></div>
+    </div>
+    <!-- accent bar -->
+    <div class="ga-bar"><div class="ga-bar-w"></div><div class="ga-bar-c"></div></div>
+    <!-- panel -->
+    <div class="ga-panel">
+      <!-- identity -->
+      <div class="ga-identity">
+        <div class="ga-circle gash"></div>
+        <div class="ga-id-l">
+          <div class="gash ga-bl" style="width:52%;margin-bottom:8px;height:13px"></div>
+          <div class="gash ga-bl" style="width:36%;height:10px"></div>
+        </div>
+      </div>
+      <!-- headline -->
+      <div class="ga-hl">
+        <div class="gash" style="height:28px;width:76%;margin-bottom:9px;border-radius:6px"></div>
+        <div class="gash" style="height:28px;width:58%;border-radius:6px"></div>
+      </div>
+      <!-- body -->
+      <div class="ga-body">
+        <div class="gash ga-bl" style="width:100%"></div>
+        <div class="gash ga-bl" style="width:96%"></div>
+        <div class="gash ga-bl" style="width:52%"></div>
+      </div>
+      <!-- section label -->
+      <div class="ga-seclabel">
+        <div class="gash ga-seclabel-t"></div>
+        <div class="ga-seclabel-r"></div>
+      </div>
+      <!-- project rows -->
+      ${[100,90,85,72].map(w => `
+      <div class="ga-proj">
+        <div class="gash ga-proj-n"></div>
+        <div class="ga-proj-ll">
+          <div class="gash ga-proj-l" style="width:${w}%"></div>
+          <div class="gash ga-proj-l" style="width:${Math.round(w*0.5)}%"></div>
+        </div>
+      </div>`).join('')}
+      <!-- pull quote -->
+      <div class="ga-quote">
+        <div class="ga-quote-b"></div>
+        <div class="ga-quote-ll">
+          <div class="gash ga-quote-l" style="width:93%"></div>
+          <div class="gash ga-quote-l" style="width:68%"></div>
+        </div>
+      </div>
+      <!-- CTAs -->
+      <div class="ga-ctas"><div class="ga-cta"></div><div class="ga-cta"></div></div>
+      <!-- sign-off -->
+      <div class="ga-signoff">
+        <div class="gash ga-bl" style="width:52px;height:11px;margin-bottom:8px"></div>
+        <div class="gash ga-bl" style="width:172px;height:17px;border-radius:5px"></div>
+      </div>
+    </div>
+  </div>
+  <!-- status -->
+  <div class="ga-status">
+    <div class="ga-dot"></div>
+    <span class="ga-status-text" id="ga-status-text">Reading the job description…</span>
+  </div>
+</div>`;
+
+    // ── canvas particle + scan animation ──
+    const wrap   = document.getElementById('ga-wrap');
+    const canvas = document.getElementById('ga-canvas');
+    const ctx    = canvas.getContext('2d');
+
+    const setSize = () => { canvas.width = wrap.offsetWidth; canvas.height = wrap.offsetHeight; };
+    setSize();
+
+    let scanY   = 0;
+    let ptcls   = [];   // particles
+    let glyphs  = [];   // floating characters
+
+    const CHARS = '∂ΔΩ∑→✦·■□●○KP{}⟩⟨/'.split('');
+
+    const spawnPtcl = (x, y) => ptcls.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 2.2,
+        vy: -(Math.random() * 2.4 + 0.4),
+        life: 1,
+        dec:  0.009 + Math.random() * 0.018,
+        r:    Math.random() * 2.6 + 0.4,
+        warm: Math.random() > 0.6,
+    });
+
+    const spawnGlyph = () => {
+        if (glyphs.length > 22) return;
+        glyphs.push({
+            x:    20 + Math.random() * (canvas.width - 40),
+            y:    canvas.height + 12,
+            char: CHARS[Math.floor(Math.random() * CHARS.length)],
+            vy:   -(Math.random() * 0.7 + 0.25),
+            life: 1,
+            dec:  0.003 + Math.random() * 0.005,
+            sz:   Math.floor(Math.random() * 7 + 9),
+        });
+    };
+
+    const tick = () => {
+        if (!document.getElementById('ga-canvas')) return;
+        setSize();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        scanY = (scanY + 2.2) % (canvas.height || 600);
+
+        // Glow trail above scan line
+        const g = ctx.createLinearGradient(0, Math.max(0, scanY - 80), 0, scanY + 6);
+        g.addColorStop(0,   'rgba(47,61,122,0)');
+        g.addColorStop(0.75,'rgba(47,61,122,0.05)');
+        g.addColorStop(1,   'rgba(47,61,122,0.14)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, Math.max(0, scanY - 80), canvas.width, 86);
+
+        // Warm leading-edge glow on scan line
+        const wg = ctx.createRadialGradient(canvas.width * 0.22, scanY, 0, canvas.width * 0.22, scanY, 90);
+        wg.addColorStop(0,   'rgba(179,90,43,0.22)');
+        wg.addColorStop(1,   'rgba(179,90,43,0)');
+        ctx.fillStyle = wg;
+        ctx.fillRect(0, scanY - 12, canvas.width, 24);
+
+        // Scan line
+        ctx.beginPath();
+        ctx.moveTo(0, scanY);
+        ctx.lineTo(canvas.width, scanY);
+        ctx.strokeStyle = 'rgba(47,61,122,0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Leading dot
+        ctx.beginPath();
+        ctx.arc(canvas.width * 0.22, scanY, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(179,90,43,0.85)';
+        ctx.fill();
+
+        // Spawn particles from scan
+        if (Math.random() > 0.42) spawnPtcl(Math.random() * canvas.width, scanY);
+        if (Math.random() > 0.965) spawnGlyph();
+
+        // Particles
+        ptcls = ptcls.filter(p => p.life > 0);
+        for (const p of ptcls) {
+            p.x += p.vx; p.y += p.vy; p.vx *= 0.97; p.life -= p.dec;
+            const hex = Math.floor(Math.max(0, p.life) * 255).toString(16).padStart(2,'0');
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle = (p.warm ? '#b35a2b' : '#2f3d7a') + hex;
+            ctx.fill();
+        }
+
+        // Glyphs
+        glyphs = glyphs.filter(c => c.life > 0);
+        for (const c of glyphs) {
+            c.y += c.vy; c.life -= c.dec;
+            ctx.save();
+            ctx.globalAlpha = c.life * 0.28;
+            ctx.font = `${c.sz}px ui-monospace, Menlo, monospace`;
+            ctx.fillStyle = '#2f3d7a';
+            ctx.fillText(c.char, c.x, c.y);
+            ctx.restore();
+        }
+
+        _animRAF = requestAnimationFrame(tick);
+    };
+
+    tick();
+
+    // Status cycling
+    const msgs = [
+        'Reading the job description…',
+        'Identifying key requirements…',
+        'Selecting relevant projects…',
+        'Crafting the headline…',
+        'Writing the opening paragraph…',
+        'Building the experience list…',
+        'Applying Hallmark discipline…',
+        'Polishing the copy…',
+        'Finalising the layout…',
+    ];
+    let mi = 0;
+    _animStatus = setInterval(() => {
+        mi = (mi + 1) % msgs.length;
+        const el = document.getElementById('ga-status-text');
+        if (!el) return;
+        el.style.opacity = '0';
+        setTimeout(() => { if (el) { el.textContent = msgs[mi]; el.style.opacity = '1'; } }, 260);
+    }, 2100);
+}
+
+function stopLoadingAnim() {
+    if (_animRAF)    { cancelAnimationFrame(_animRAF); _animRAF = null; }
+    if (_animStatus) { clearInterval(_animStatus);     _animStatus = null; }
+}
+
+function setLoading(on) {
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = on;
+    btn.innerHTML = on
+        ? '<div class="spinner"></div><span>Generating&hellip;</span>'
+        : 'Generate Cold Mail';
+
+    if (on) {
+        startLoadingAnim();
+    } else {
+        stopLoadingAnim();
+        // If generation failed with no prior HTML, restore the empty state
+        if (!generatedHTML) {
+            document.getElementById('output-content').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">✉️</div>
+                    <div class="empty-title">Ready to generate</div>
+                    <div class="empty-sub">Paste a job description, optionally upload context files, then hit Generate.</div>
+                </div>`;
+        }
+    }
+}
+
+function showError(msg) {
+    document.getElementById('error-area').innerHTML =
+        `<div class="alert alert-error">&#9888; ${escapeHTML(msg)}</div>`;
+}
+
+function escapeHTML(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Refresh available models from Gemini API ──
+async function refreshModels() {
+    const apiKey = apiKeyEl.value.trim();
+    if (!apiKey) return showError('Enter your Gemini API key first before checking available models.');
+
+    const btn = document.getElementById('refresh-btn');
+    btn.classList.add('spinning');
+    btn.disabled = true;
+
+    try {
+        const resp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=100`
+        );
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({}));
+            throw new Error(err.error?.message || `API error ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        const models = (data.models || [])
+            .filter(m =>
+                Array.isArray(m.supportedGenerationMethods) &&
+                m.supportedGenerationMethods.includes('generateContent') &&
+                m.name.includes('gemini')
+            )
+            .map(m => ({
+                id:   m.name.replace('models/', ''),
+                name: m.displayName || m.name.replace('models/', '')
+            }))
+            .sort((a, b) => a.id.localeCompare(b.id));
+
+        if (!models.length) throw new Error('No generateContent-compatible Gemini models found for this API key.');
+
+        const current = modelEl.value;
+        modelEl.innerHTML = '';
+        models.forEach(({ id, name }) => {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = name !== id ? `${id}  (${name})` : id;
+            if (id === current) opt.selected = true;
+            modelEl.appendChild(opt);
+        });
+
+        if (!models.find(m => m.id === current)) {
+            modelEl.value = models[0].id;
+        }
+        localStorage.setItem('gemini_model', modelEl.value);
+
+        // Brief visual feedback on the button
+        btn.textContent = '✓';
+        btn.style.color = 'var(--accent)';
+        btn.style.borderColor = 'var(--accent)';
+        setTimeout(() => {
+            btn.textContent = '↻';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+        }, 1800);
+
+    } catch (err) {
+        showError(err.message);
+    } finally {
+        btn.classList.remove('spinning');
+        btn.disabled = false;
+    }
+}
+</script>
+</body>
+</html>
